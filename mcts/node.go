@@ -9,19 +9,19 @@ import (
 type MonteCarloTreeSearchNode struct {
 	NumberOfVis int
 	Results     map[int]int
-	State       game.TicTacToeGameState
+	State       game.DotAndBoxState
 	Parent      *MonteCarloTreeSearchNode
 	Children    []*MonteCarloTreeSearchNode
-	UntriedMove []game.TicTacToeMove
+	UntriedMove []game.DotAndBoxMove
 }
 
-func NewNode(state game.TicTacToeGameState, parent *MonteCarloTreeSearchNode) *MonteCarloTreeSearchNode {
+func NewNode(state game.DotAndBoxState, parent *MonteCarloTreeSearchNode) *MonteCarloTreeSearchNode {
 	return &MonteCarloTreeSearchNode{
 		NumberOfVis: 0,
 		Results:     make(map[int]int),
 		State:       state,
 		Parent:      parent,
-		Children:    make([]*MonteCarloTreeSearchNode, 0),
+		Children:    make([]*MonteCarloTreeSearchNode, 0, 64),
 		UntriedMove: state.GetLegalMove(),
 	}
 }
@@ -51,13 +51,10 @@ func (n *MonteCarloTreeSearchNode) IsTerminalNode() bool {
 }
 
 func (n *MonteCarloTreeSearchNode) RollOut() int {
-	cur := game.NewTicTacToeGameState(n.State.Board, n.State.NextToMove)
+	cur := game.NewDotAndBoxState(n.State.Box, n.State.Board, n.State.NextToMove)
 	for !cur.IsGameOver() {
 		moves := cur.GetLegalMove()
 		move := moves[rand.Intn(len(moves))]
-		//r := rand.Intn(len(moves))
-		//move := moves[r]
-		//moves = append(moves[:r], moves[r+1:]...)
 		cur = cur.Move(move)
 	}
 	return cur.GameResult()
@@ -76,7 +73,8 @@ func (n *MonteCarloTreeSearchNode) IsFullyExpanded() bool {
 }
 
 func (n *MonteCarloTreeSearchNode) BestChild(param float64) *MonteCarloTreeSearchNode {
-	max, child := -float64(0x3f3f3f3f), new(MonteCarloTreeSearchNode)
+	max := -float64(0x3f3f3f3f)
+	var child *MonteCarloTreeSearchNode
 	for _, c := range n.Children {
 		x := c.Q()/c.N() + param*math.Sqrt(2*math.Log(n.N())/c.N())
 		if x > max {

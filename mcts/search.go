@@ -1,5 +1,7 @@
 package mcts
 
+import "time"
+
 type MonteCarloTreeSearch struct {
 	root *MonteCarloTreeSearchNode
 }
@@ -21,10 +23,21 @@ func (s MonteCarloTreeSearch) TreePolicy() *MonteCarloTreeSearchNode {
 }
 
 func (s MonteCarloTreeSearch) BestMove() *MonteCarloTreeSearchNode {
-	for i := 0; i < 100000; i++ {
-		v := s.TreePolicy()
-		reward := v.RollOut()
-		v.Back(reward)
-	}
+	timeout := time.After(10 * time.Second)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-timeout:
+				quit <- struct{}{}
+				return
+			default:
+				v := s.TreePolicy()
+				reward := v.RollOut()
+				v.Back(reward)
+			}
+		}
+	}()
+	<-quit
 	return s.root.BestChild(float64(0))
 }
