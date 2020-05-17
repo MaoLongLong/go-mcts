@@ -51,20 +51,24 @@ func (n *MonteCarloTreeSearchNode) IsTerminalNode() bool {
 }
 
 func (n *MonteCarloTreeSearchNode) RollOut() int {
-	cur := game.NewDotAndBoxState(n.State.Box, n.State.Board, n.State.NextToMove)
-	for !cur.IsGameOver() {
+	cur := game.NewDotAndBoxState(n.State.Box, n.State.Board, n.State.NextToMove, 0)
+	for !cur.NeedToTrim() {
 		moves := cur.GetLegalMove()
 		move := moves[rand.Intn(len(moves))]
 		cur = cur.Move(move)
 	}
-	return cur.GameResult()
+	return cur.GameResult(true)
 }
 
-func (n *MonteCarloTreeSearchNode) Back(result int) {
+func (n *MonteCarloTreeSearchNode) Back(res int) {
 	n.NumberOfVis++
-	n.Results[result]++
+	if res < 0 {
+		n.Results[game.Black] -= res
+	} else {
+		n.Results[game.White] += res
+	}
 	if n.Parent != nil {
-		n.Parent.Back(result)
+		n.Parent.Back(res)
 	}
 }
 

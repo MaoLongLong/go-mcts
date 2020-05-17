@@ -7,10 +7,12 @@ const (
 )
 
 type DotAndBoxMove struct {
-	k, i, j, color int
+	K, I, J, Color int
 }
 
 type DotAndBoxState struct {
+	DotAndBoxMove
+	Depth      int
 	Box        [5][5]int
 	Board      [2][6][5]int
 	NextToMove int
@@ -18,22 +20,33 @@ type DotAndBoxState struct {
 
 func NewDotAndBoxMove(k, i, j, color int) DotAndBoxMove {
 	return DotAndBoxMove{
-		k:     k,
-		i:     i,
-		j:     j,
-		color: color,
+		K:     k,
+		I:     i,
+		J:     j,
+		Color: color,
 	}
 }
 
-func NewDotAndBoxState(box [5][5]int, board [2][6][5]int, nextToMove int) DotAndBoxState {
+func NewDotAndBoxState(box [5][5]int, board [2][6][5]int, nextToMove, depth int) DotAndBoxState {
 	return DotAndBoxState{
+		Depth:      depth,
 		Box:        box,
 		Board:      board,
 		NextToMove: nextToMove,
 	}
 }
 
-func (t DotAndBoxState) GameResult() int {
+func NewDotAndBoxStateWithMove(box [5][5]int, board [2][6][5]int, nextToMove, depth int, move DotAndBoxMove) DotAndBoxState {
+	return DotAndBoxState{
+		Depth:         depth,
+		DotAndBoxMove: move,
+		Box:           box,
+		Board:         board,
+		NextToMove:    nextToMove,
+	}
+}
+
+func (t DotAndBoxState) GetCount() (int, int) {
 	whiteCount, blackCount := 0, 0
 	for i := 0; i < 5; i++ {
 		for j := 0; j < 5; j++ {
@@ -44,67 +57,74 @@ func (t DotAndBoxState) GameResult() int {
 			}
 		}
 	}
-	if blackCount+whiteCount < 25 {
+	return blackCount, whiteCount
+}
+
+func (t DotAndBoxState) GameResult(must bool) int {
+	blackCount, whiteCount := t.GetCount()
+	if !must && whiteCount+blackCount < 25 {
 		return NotOver
 	}
-	if blackCount > whiteCount {
-		return Black
-	}
-	return White
+	return whiteCount - blackCount
+}
+
+func (t DotAndBoxState) NeedToTrim() bool {
+	blackCount, whiteCount := t.GetCount()
+	return t.Depth > 6 || blackCount > 12 || whiteCount > 12
 }
 
 func (t DotAndBoxState) IsGameOver() bool {
-	return t.GameResult() != NotOver
+	return t.GameResult(false) != NotOver
 }
 
 func (t DotAndBoxState) IsMoveLegal(move DotAndBoxMove) bool {
-	if move.color != t.NextToMove {
+	if move.Color != t.NextToMove {
 		return false
 	}
 
-	if move.k != 0 && move.k != 1 {
+	if move.K != 0 && move.K != 1 {
 		return false
 	}
 
-	if move.i < 0 || move.i > 5 {
+	if move.I < 0 || move.I > 5 {
 		return false
 	}
 
-	if move.j < 0 || move.j > 4 {
+	if move.J < 0 || move.J > 4 {
 		return false
 	}
 
-	return t.Board[move.k][move.i][move.j] == 0
+	return t.Board[move.K][move.I][move.J] == 0
 }
 
 func (t DotAndBoxState) Move(move DotAndBoxMove) DotAndBoxState {
 	newBoard := t.Board
 	newBox := t.Box
-	newBoard[move.k][move.i][move.j] = move.color
+	newBoard[move.K][move.I][move.J] = move.Color
 	flag := false
 	// 横
-	if move.k == 0 {
+	if move.K == 0 {
 		// 0 1 0
 		// 0 0 0
 		// 1 0 0
 		// 1 1 0
 		upCount := 0
-		if move.i-1 >= 0 {
+		if move.I-1 >= 0 {
 			// 上
-			if t.Board[0][move.i-1][move.j] != 0 {
+			if t.Board[0][move.I-1][move.J] != 0 {
 				upCount++
 			}
 			// 左上
-			if t.Board[1][move.j][move.i-1] != 0 {
+			if t.Board[1][move.J][move.I-1] != 0 {
 				upCount++
 			}
 			// 右上
-			if t.Board[1][move.j+1][move.i-1] != 0 {
+			if t.Board[1][move.J+1][move.I-1] != 0 {
 				upCount++
 			}
 		}
 		if upCount == 3 {
-			newBox[move.i-1][move.j] = move.color
+			newBox[move.I-1][move.J] = move.Color
 			flag = true
 		}
 
@@ -114,23 +134,23 @@ func (t DotAndBoxState) Move(move DotAndBoxMove) DotAndBoxState {
 		// 1 1 1
 		downCount := 0
 		// 下
-		if move.i+1 < 6 {
-			if t.Board[0][move.i+1][move.j] != 0 {
+		if move.I+1 < 6 {
+			if t.Board[0][move.I+1][move.J] != 0 {
 				downCount++
 			}
 		}
-		if move.i < 5 {
+		if move.I < 5 {
 			// 左下
-			if t.Board[1][move.j][move.i] != 0 {
+			if t.Board[1][move.J][move.I] != 0 {
 				downCount++
 			}
 			// 右下
-			if t.Board[1][move.j+1][move.i] != 0 {
+			if t.Board[1][move.J+1][move.I] != 0 {
 				downCount++
 			}
 		}
 		if downCount == 3 {
-			newBox[move.i][move.j] = move.color
+			newBox[move.I][move.J] = move.Color
 			flag = true
 		}
 	} else {
@@ -140,21 +160,21 @@ func (t DotAndBoxState) Move(move DotAndBoxMove) DotAndBoxState {
 		// 0 0 0
 		// 0 1 0
 		leftCount := 0
-		if move.i-1 >= 0 {
+		if move.I-1 >= 0 {
 			// 左
-			if t.Board[1][move.i-1][move.j] != 0 {
+			if t.Board[1][move.I-1][move.J] != 0 {
 				leftCount++
 			}
 			// 左上
-			if t.Board[0][move.j][move.i-1] != 0 {
+			if t.Board[0][move.J][move.I-1] != 0 {
 				leftCount++
 			}
-			if t.Board[0][move.j+1][move.i-1] != 0 {
+			if t.Board[0][move.J+1][move.I-1] != 0 {
 				leftCount++
 			}
 		}
 		if leftCount == 3 {
-			newBox[move.j][move.i-1] = move.color
+			newBox[move.J][move.I-1] = move.Color
 			flag = true
 		}
 
@@ -163,35 +183,35 @@ func (t DotAndBoxState) Move(move DotAndBoxMove) DotAndBoxState {
 		// 0 0 1
 		// 0 1 1
 		rightCount := 0
-		if move.i+1 < 6 {
-			if t.Board[1][move.i+1][move.j] != 0 {
+		if move.I+1 < 6 {
+			if t.Board[1][move.I+1][move.J] != 0 {
 				rightCount++
 			}
 		}
-		if move.i < 5 {
-			if t.Board[0][move.j][move.i] != 0 {
+		if move.I < 5 {
+			if t.Board[0][move.J][move.I] != 0 {
 				rightCount++
 			}
-			if t.Board[0][move.j+1][move.i] != 0 {
+			if t.Board[0][move.J+1][move.I] != 0 {
 				rightCount++
 			}
 		}
 		if rightCount == 3 {
-			newBox[move.j][move.i] = move.color
+			newBox[move.J][move.I] = move.Color
 			flag = true
 		}
 	}
 	var nextToMove int
 	if flag {
-		nextToMove = move.color
+		nextToMove = move.Color
 	} else {
-		if move.color == Black {
+		if move.Color == Black {
 			nextToMove = White
 		} else {
 			nextToMove = Black
 		}
 	}
-	return NewDotAndBoxState(newBox, newBoard, nextToMove)
+	return NewDotAndBoxStateWithMove(newBox, newBoard, nextToMove, t.Depth+1, move)
 }
 
 func (t DotAndBoxState) GetLegalMove() []DotAndBoxMove {

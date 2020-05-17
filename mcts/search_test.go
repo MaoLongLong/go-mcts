@@ -36,7 +36,7 @@ func TestBestMove(t *testing.T) {
 			{0, 0, 0, 0, 0},
 		},
 	}
-	state := game.NewDotAndBoxState(box, board, game.White)
+	state := game.NewDotAndBoxState(box, board, game.White, 0)
 	root := NewNode(state, nil)
 	search := NewSearch(root)
 	node := search.BestMove()
